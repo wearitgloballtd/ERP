@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { Plus, Search, Edit, Trash2, Package, DollarSign } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Package } from "lucide-react"
 import { ref, push, set, get, remove, onValue } from "firebase/database"
 import { database } from "@/lib/firebase"
 
@@ -635,7 +635,7 @@ const ItemMaster = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center text-sm text-card-foreground">
-                      <DollarSign className="h-4 w-4 mr-1" />
+                      <span className="text-lg mr-1">₹</span>
                       {item.price ? Number(item.price).toFixed(2) : '-'} {item.currency || ''}
                     </div>
                     <div className="text-sm text-muted-foreground">
