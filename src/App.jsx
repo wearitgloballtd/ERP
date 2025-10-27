@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Routes, Route } from "react-router-dom"
 import Sidebar from "./components/Sidebar"
-import Header from "./components/Header"
 import Dashboard from "./pages/Dashboard"
 import ItemMaster from "./pages/ItemMaster"
 import PartyMaster from "./pages/PartyMaster"
@@ -17,25 +16,21 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
-
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-6">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/item-master" element={<ItemMaster />} />
-            <Route path="/party-master" element={<PartyMaster />} />
-            <Route path="/purchase-indent" element={<PurchaseIndent />} />
-            <Route path="/purchase-order" element={<PurchaseOrder />} />
-            <Route path="/job-work-order" element={<JobWorkOrder />} />
-            <Route path="/material-receipt" element={<MaterialReceipt />} />
-            <Route path="/sales-invoice" element={<SalesInvoice />} />
-          </Routes>
-        </main>
-      </div>
+      <main className="overflow-x-hidden overflow-y-auto bg-background p-6">
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/item-master" element={<ItemMaster />} />
+          <Route path="/party-master" element={<PartyMaster />} />
+          <Route path="/purchase-indent" element={<PurchaseIndent />} />
+          <Route path="/purchase-order" element={<PurchaseOrder />} />
+          <Route path="/job-work-order" element={<JobWorkOrder />} />
+          <Route path="/material-receipt" element={<MaterialReceipt />} />
+          <Route path="/sales-invoice" element={<SalesInvoice />} />
+        </Routes>
+      </main>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 import { Link, useLocation } from "react-router-dom"
-import { Home, Package, Users, FileText, ShoppingCart, Wrench, Truck, Receipt, X } from "lucide-react"
+import { Home, Package, Users, FileText, ShoppingCart, Wrench, Truck, Receipt, Menu, X } from "lucide-react"
 
 const menuItems = [
   { path: "/", icon: Home, label: "Dashboard" },
@@ -21,46 +21,79 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Mobile overlay */}
       {isOpen && <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={onClose} />}
 
-      {/* Sidebar */}
-      <div
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:inset-0
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
-      >
-        <div className="flex items-center justify-between h-16 px-6 border-b border-sidebar-border">
-          <h1 className="text-xl font-heading font-bold text-sidebar-foreground">ERP System</h1>
-          <button onClick={onClose} className="lg:hidden p-2 rounded-md hover:bg-sidebar-accent">
-            <X className="h-5 w-5 text-sidebar-foreground" />
+      {/* Top Navigation Bar */}
+      <div className="w-full bg-sidebar border-b border-sidebar-border shadow-sm">
+        <div className="flex items-center justify-between h-16 px-4 lg:px-6">
+          {/* Logo/Brand */}
+          <div className="flex items-center">
+            <h1 className="text-xl font-heading font-bold text-sidebar-foreground">ERP System</h1>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center space-x-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon
+              const isActive = location.pathname === item.path
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`
+                    flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200
+                    ${
+                      isActive
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="hidden xl:inline">{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Mobile menu button */}
+          <button 
+            onClick={onClose} 
+            className="lg:hidden p-2 rounded-md hover:bg-sidebar-accent"
+          >
+            {isOpen ? <X className="h-5 w-5 text-sidebar-foreground" /> : <Menu className="h-5 w-5 text-sidebar-foreground" />}
           </button>
         </div>
 
-        <nav className="mt-6 px-3">
-          {menuItems.map((item) => {
-            const Icon = item.icon
-            const isActive = location.pathname === item.path
+        {/* Mobile Navigation */}
+        {isOpen && (
+          <div className="lg:hidden border-t border-sidebar-border bg-sidebar">
+            <nav className="px-4 py-2 space-y-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon
+                const isActive = location.pathname === item.path
 
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={onClose}
-                className={`
-                  flex items-center px-3 py-3 mb-2 text-sm font-medium rounded-lg transition-colors duration-200
-                  ${
-                    isActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  }
-                `}
-              >
-                <Icon className="h-5 w-5 mr-3" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={`
+                      flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200
+                      ${
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      }
+                    `}
+                  >
+                    <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        )}
       </div>
     </>
   )
