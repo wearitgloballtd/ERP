@@ -24,13 +24,16 @@ const menuItems = [
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation()
   const [openDropdown, setOpenDropdown] = useState(null)
+  const [hoveredDropdown, setHoveredDropdown] = useState(null)
   const dropdownRef = useRef(null)
+  const hoverTimeoutRef = useRef(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpenDropdown(null)
+        setHoveredDropdown(null)
       }
     }
 
@@ -39,6 +42,29 @@ const Sidebar = ({ isOpen, onClose }) => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Handle hover events with delay
+  const handleMouseEnter = (index) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+    }
+    setHoveredDropdown(index)
+  }
+
+  const handleMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredDropdown(null)
+    }, 150) // Small delay to prevent flickering
+  }
 
   return (
     <>
@@ -59,11 +85,16 @@ const Sidebar = ({ isOpen, onClose }) => {
               const Icon = item.icon
               const isActive = item.path ? location.pathname === item.path : 
                 (item.children && item.children.some(child => location.pathname === child.path))
-              const isDropdownOpen = openDropdown === index
+              const isDropdownOpen = openDropdown === index || hoveredDropdown === index
 
               if (item.hasDropdown) {
                 return (
-                  <div key={item.label} className="relative">
+                  <div 
+                    key={item.label} 
+                    className="relative"
+                    onMouseEnter={() => handleMouseEnter(index)}
+                    onMouseLeave={handleMouseLeave}
+                  >
                     <button
                       onClick={() => setOpenDropdown(isDropdownOpen ? null : index)}
                       className={`
