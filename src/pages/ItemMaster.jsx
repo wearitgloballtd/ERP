@@ -44,7 +44,34 @@ const ItemMaster = () => {
   }
 
   const zeroPad = (num, places) => String(num).padStart(places, "0")
-  const formatItemCode = (seq) => `PA/IC/${computeFinancialYear()}/${zeroPad(seq, 5)}`
+  
+  // Generate item code with format IM/S/Year/0001 or IM/P/Year/0001
+  const generateItemCode = (sequence, type) => {
+    const prefix = type === "purchase" ? "IM/P" : "IM/S"
+    const year = computeFinancialYear()
+    return `${prefix}/${year}/${zeroPad(sequence, 4)}`
+  }
+
+  // Fetch next sequence number from Firebase
+  const getNextSequenceNumber = async (type) => {
+    try {
+      const sequenceRef = ref(database, `itemMaster/sequences/${type}`)
+      const snapshot = await get(sequenceRef)
+      
+      let nextSequence = 1
+      if (snapshot.exists()) {
+        nextSequence = snapshot.val() + 1
+      }
+      
+      // Update the sequence number in Firebase
+      await set(sequenceRef, nextSequence)
+      
+      return nextSequence
+    } catch (error) {
+      console.error("Error getting sequence number:", error)
+      return 1
+    }
+  }
 
   // Check if all required fields are filled
   const isFormValid = useMemo(() => {
@@ -52,7 +79,6 @@ const ItemMaster = () => {
       formData.itemName.trim() !== "" &&
       formData.itemType !== "" &&
       formData.machineName !== "" &&
-      formData.itemCode.trim() !== "" &&
       formData.tax !== "" &&
       formData.itemGroup !== "" &&
       formData.uom !== "" &&
@@ -85,6 +111,13 @@ const ItemMaster = () => {
       document.removeEventListener("keydown", handleEscape)
     }
   }, [showForm])
+
+  // Generate item code when form opens or tab changes
+  useEffect(() => {
+    if (showForm && !editingItem) {
+      generateAndSetItemCode()
+    }
+  }, [showForm, activeTab, editingItem])
 
   // Fetch items from Firebase
   useEffect(() => {
@@ -182,6 +215,21 @@ const ItemMaster = () => {
       setSubmitError(error instanceof Error ? error.message : "Failed to save item. Please try again.")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Generate item code when form opens
+  const generateAndSetItemCode = async () => {
+    if (!editingItem) {
+      try {
+        const sequence = await getNextSequenceNumber(activeTab)
+        const itemCode = generateItemCode(sequence, activeTab)
+        setFormData(prev => ({ ...prev, itemCode }))
+      } catch (error) {
+        console.error("Error generating item code:", error)
+        // Fallback to manual code if generation fails
+        setFormData(prev => ({ ...prev, itemCode: "" }))
+      }
     }
   }
 
@@ -408,10 +456,13 @@ const ItemMaster = () => {
                   type="text"
                   required
                   value={formData.itemCode}
-                  onChange={(e) => handleInputChange("itemCode", e.target.value)}
-                  placeholder="Example: PF0001"
-                  className="w-full px-3 py-2 bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                  readOnly
+                  placeholder="Auto-generated item code"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-muted-foreground cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {editingItem ? "Item code cannot be changed" : "Item code is automatically generated"}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-card-foreground mb-1">

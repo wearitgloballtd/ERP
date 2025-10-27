@@ -39,6 +39,46 @@ const PartyMaster = () => {
 
   const partyTypes = ["Supplier", "Customer", "Both"]
   
+  // Compute financial year for party code generation
+  const computeFinancialYear = () => {
+    const now = new Date()
+    const month = now.getMonth()
+    const year = now.getFullYear()
+    const fyStart = month >= 3 ? year : year - 1
+    const fyEndShort = ((fyStart + 1) % 100).toString().padStart(2, "0")
+    return `${fyStart}-${fyEndShort}`
+  }
+
+  const zeroPad = (num, places) => String(num).padStart(places, "0")
+  
+  // Generate party code with format PM/B/Year/0001 or PM/S/Year/0001
+  const generatePartyCode = (sequence, type) => {
+    const prefix = type === "buyer" ? "PM/B" : "PM/S"
+    const year = computeFinancialYear()
+    return `${prefix}/${year}/${zeroPad(sequence, 4)}`
+  }
+
+  // Fetch next sequence number from Firebase
+  const getNextSequenceNumber = async (type) => {
+    try {
+      const sequenceRef = ref(database, `partyMaster/sequences/${type}`)
+      const snapshot = await get(sequenceRef)
+      
+      let nextSequence = 1
+      if (snapshot.exists()) {
+        nextSequence = snapshot.val() + 1
+      }
+      
+      // Update the sequence number in Firebase
+      await set(sequenceRef, nextSequence)
+      
+      return nextSequence
+    } catch (error) {
+      console.error("Error getting sequence number:", error)
+      return 1
+    }
+  }
+  
   // Regex patterns for validation
   const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/
   const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i
@@ -86,13 +126,12 @@ const PartyMaster = () => {
   // Check if all required fields are filled
   const isFormValid = useMemo(() => {
     return (
-      formData.partyCode.trim() !== "" &&
       formData.partyName.trim() !== "" &&
       formData.category.trim() !== "" &&
       formData.contactNumber.trim() !== "" &&
       Object.keys(formErrors).every((key) => !formErrors[key])
     )
-  }, [formData.partyCode, formData.partyName, formData.category, formData.contactNumber, formErrors])
+  }, [formData.partyName, formData.category, formData.contactNumber, formErrors])
 
   // Close modal on Escape key press and prevent body scroll
   useEffect(() => {
@@ -112,6 +151,13 @@ const PartyMaster = () => {
       document.removeEventListener("keydown", handleEscape)
     }
   }, [showForm])
+
+  // Generate party code when form opens or tab changes
+  useEffect(() => {
+    if (showForm && !editingParty) {
+      generateAndSetPartyCode()
+    }
+  }, [showForm, activeTab, editingParty])
 
   // Fetch parties from Firebase
   useEffect(() => {
@@ -217,6 +263,21 @@ const PartyMaster = () => {
       setSubmitError(error instanceof Error ? error.message : "Failed to save party. Please try again.")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Generate party code when form opens
+  const generateAndSetPartyCode = async () => {
+    if (!editingParty) {
+      try {
+        const sequence = await getNextSequenceNumber(activeTab)
+        const partyCode = generatePartyCode(sequence, activeTab)
+        setFormData(prev => ({ ...prev, partyCode }))
+      } catch (error) {
+        console.error("Error generating party code:", error)
+        // Fallback to manual code if generation fails
+        setFormData(prev => ({ ...prev, partyCode: "" }))
+      }
     }
   }
 
@@ -394,11 +455,13 @@ const PartyMaster = () => {
                   type="text"
                   required
                   value={formData.partyCode}
-                  onChange={(e) => handleInputChange("partyCode", e.target.value)}
-                  placeholder="Example: PC001"
-                  className="w-full px-3 py-2 bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                   readOnly
+                  placeholder="Auto-generated party code"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-muted-foreground cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {editingParty ? "Party code cannot be changed" : "Party code is automatically generated"}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-card-foreground mb-1">
@@ -707,14 +770,14 @@ const PartyMaster = () => {
                         <div className="text-sm text-muted-foreground">{party.partyCode}</div>
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
-                            party.partyType === "Supplier"
-                              ? "bg-accent text-accent-foreground"
-                              : party.partyType === "Customer"
-                                ? "bg-secondary text-secondary-foreground"
-                                : "bg-primary text-primary-foreground"
+                            party.type === "supplier"
+                              ? "bg-blue-100 text-blue-800"
+                              : party.type === "buyer"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {party.partyType}
+                          {party.type === "supplier" ? "Supplier" : party.type === "buyer" ? "Buyer" : party.partyType || "Unknown"}
                         </span>
                       </div>
                     </div>
@@ -723,15 +786,15 @@ const PartyMaster = () => {
                     <div className="space-y-1">
                       <div className="flex items-center text-sm text-card-foreground">
                         <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {party.contactPerson}
+                        {party.contactPerson || "-"}
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Phone className="h-4 w-4 mr-2" />
-                        {party.phone}
+                        {party.contactNumber || party.phone || "-"}
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Mail className="h-4 w-4 mr-2" />
-                        {party.email}
+                        {party.email || "-"}
                       </div>
                     </div>
                   </td>
@@ -739,16 +802,16 @@ const PartyMaster = () => {
                     <div className="flex items-start text-sm text-card-foreground">
                       <MapPin className="h-4 w-4 mr-2 text-muted-foreground mt-0.5" />
                       <div className="max-w-xs">
-                        {party.address}
-                        {party.gstNumber && (
-                          <div className="text-xs text-muted-foreground mt-1">GST: {party.gstNumber}</div>
+                        {party.partyAddress || party.address || "-"}
+                        {(party.gstin || party.gstNumber) && (
+                          <div className="text-xs text-muted-foreground mt-1">GST: {party.gstin || party.gstNumber}</div>
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-card-foreground">
-                      ₹{party.creditLimit.toLocaleString()}
+                      ₹{party.creditLimit ? party.creditLimit.toLocaleString() : "0"}
                     </div>
                   </td>
                   <td className="px-6 py-4">
